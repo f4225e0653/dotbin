@@ -9,25 +9,8 @@ DNROOT="http://publish.dvlabs.com/democracynow/360"
 DNSAVEPATH="$(mktemp -d)"
 TODAY="$(date +'%Y-%m%d')" ## Today's date, this is part of the download URL.
 
-if [[ ! -e ${DNSAVEPATH} ]]
-then
-	echo "${DNSAVEPATH} does not exist, creating..."
-	mkdir -p "${DNSAVEPATH}"
-elif [[ -f ${DNSAVEPATH} ]]
-then
-	echo "${DNSAVEPATH} exists but is a regular file, saving to /var/tmp instead." ## in case something really fucked up happens
-	DNSAVEPATH="/var/tmp"
-elif [[ -d ${DNSAVEPATH} ]]
-then
-	if [[ -f ${DNSAVEPATH}/dn${TODAY}.mp4 ]]
-	then
-		echo "${DNSAVEPATH}/dn${TODAY}.mp4 exists! removing..." ## this isn't meant to be a "smart" script
-		rm -v ${DNSAVEPATH}/dn${TODAY}.mp4
-	fi
-fi
-
-wget -q -b "${DNROOT}/dn${TODAY}.mp4" -O "${DNSAVEPATH}/dn${TODAY}.mp4" -o /dev/null &
-
+wget -o /dev/null -q -b "${DNROOT}/dn${TODAY}.mp4" -O "${DNSAVEPATH}/dn${TODAY}.mp4" &
+## wget forks to background and the script sleeps for 10 seconds
 echo "Buffering for 10 seconds..."
 sleep 10
 
