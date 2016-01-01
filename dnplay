@@ -1,19 +1,43 @@
 #!/usr/bin/bash
 ## This under-intelligent script tries to guess what today's DN! mp4 video URL would be, if one was published today.
-## If it exists, it saves it to a temporary directory in RAM, gives the video file ten seconds to buffer, and then begins playing.
-## Video player used is mpv.
-## I'm not simply using a pipe or sending a URL to mpv because sometimes I like to save them for future use.
+## If it exists, it saves it to a tmpfs directory, gives the video file time to buffer, and then begins playing.
+## Video player used is mpv. To correctly terminate the script before playback is finished, close the mpv window. The script will advance to cleanup functions normally.
+## I'm not simply using a pipe or even just passing the URL to mpv because sometimes I like to save them for future use.
 ## You want to have up to 500 mib of free ram.
 
-DNROOT="http://publish.dvlabs.com/democracynow/360"
 DNSAVEPATH="$(mktemp -d)"
-TODAY="$(date +'%Y-%m%d')" ## Today's date, this is part of the download URL.
+DATE="$(date +'%Y-%m%d')"
+DNROOT="http://publish.dvlabs.com/democracynow/360"
+SLEEP="30" # how many seconds to buffer before starting playback
+RETRY_LIMIT="20" ## how many days back should the script go looking for
 
-wget -o /dev/null -q -b "${DNROOT}/dn${TODAY}.mp4" -O "${DNSAVEPATH}/dn${TODAY}.mp4" &
-## wget forks to background and the script sleeps for 10 seconds
-echo "Buffering for 10 seconds..."
-sleep 10
+function playdn(){
+	wget -o /dev/null -q -b "${DNROOT}/dn$1.mp4" -O "${DNSAVEPATH}/dn$1.mp4" &
+	echo "Buffering to ${DNSAVEPATH}/dn$1.mp4"
+	echo "Buffering for ${SLEEP} seconds..."
+	sleep ${SLEEP}
 
-mpv "${DNSAVEPATH}/dn${TODAY}.mp4"
-echo "removing temporary file..." ## The user has to decide to pause mpv playback and copy the file to permanent storage because when mpv quits we free up that ram
-rm -v ${DNSAVEPATH}/dn${TODAY}.mp4"
+	mpv "${DNSAVEPATH}/dn$1.mp4"
+	echo "removing temporary file..." ## The user has to decide to pause mpv playback and copy the file to permanent storage because when mpv quits we free up that ram
+	rm -vrf "${DNSAVEPATH}"
+	}
+	
+if $(wget --spider --quiet "${DNROOT}/dn${DATE}.mp4")
+then	
+	echo "There is a new episode of Democracy Now! today."
+	playdn "${DATE}"
+else
+	echo "Could not find a new episode of Democracy Now! today."
+	for DAYSAGO in $(seq 1 ${RETRY_LIMIT})
+	do
+		CHECK="$(date --date=${DAYSAGO}\ days\ ago +'%Y-%m%d')"
+		if $(wget --spider --quiet "${DNROOT}/dn${CHECK}.mp4")
+		then
+			echo "Found an episode for ${DAYSAGO} days ago."
+			playdn "${CHECK}"
+			break
+		else	
+			echo "Could not find an episode for ${DAYSAGO} days ago."
+		fi
+	done
+fi
