@@ -8,36 +8,36 @@
 DNSAVEPATH="$(mktemp -d)"
 DATE="$(date +'%Y-%m%d')"
 DNROOT="http://publish.dvlabs.com/democracynow/360"
-SLEEP="30" # how many seconds to buffer before starting playback
+SLEEP="10" # how many seconds to buffer before starting playback
 RETRY_LIMIT="20" ## how many days back should the script go looking for
 
-function playdn(){
-	wget -o /dev/null -q -b "${DNROOT}/dn$1.mp4" -O "${DNSAVEPATH}/dn$1.mp4" &
-	echo "Buffering to ${DNSAVEPATH}/dn$1.mp4"
-	echo "Buffering for ${SLEEP} seconds..."
-	sleep ${SLEEP}
+function playd(){ # $1 is a date string in format +'%Y-%m%d'
+        wget -o /dev/null -q -b "${DNROOT}/dn$1.mp4" -O "${DNSAVEPATH}/dn$1.mp4" &
+        echo "Buffering to ${DNSAVEPATH}/dn$1.mp4"
+        echo "Buffering for ${SLEEP} seconds..."
+        sleep ${SLEEP}
 
-	mpv "${DNSAVEPATH}/dn$1.mp4"
-	echo "removing temporary file..." ## The user has to decide to pause mpv playback and copy the file to permanent storage because when mpv quits we free up that ram
-	rm -vrf "${DNSAVEPATH}"
-	}
-	
+        mpv "${DNSAVEPATH}/dn$1.mp4"
+        echo "removing temporary file..." ## The user has to decide to pause mpv playback and copy the file to permanent storage because when mpv quits we free up that ram
+        rm -vrf "${DNSAVEPATH}"
+        }
+
 if $(wget --spider --quiet "${DNROOT}/dn${DATE}.mp4")
-then	
-	echo "There is a new episode of Democracy Now! today."
-	playdn "${DATE}"
+then
+        echo "There is a new episode of Democracy Now! today."
+        playdn "${DATE}"
 else
-	echo "Could not find a new episode of Democracy Now! today."
-	for DAYSAGO in $(seq 1 ${RETRY_LIMIT})
-	do
-		CHECK="$(date --date=${DAYSAGO}\ days\ ago +'%Y-%m%d')"
-		if $(wget --spider --quiet "${DNROOT}/dn${CHECK}.mp4")
-		then
-			echo "Found an episode for ${DAYSAGO} days ago."
-			playdn "${CHECK}"
-			break
-		else	
-			echo "Could not find an episode for ${DAYSAGO} days ago."
-		fi
-	done
+        echo "Could not find a new episode of Democracy Now! today."
+        for DAYSAGO in $(seq 1 ${RETRY_LIMIT})
+        do
+                CHECK="$(date --date=${DAYSAGO}\ days\ ago +'%Y-%m%d')"
+                if $(wget --spider --quiet "${DNROOT}/dn${CHECK}.mp4")
+                then
+                        echo "Found an episode for ${DAYSAGO} days ago."
+                        playd "${CHECK}"
+                        break
+                else
+                        echo "Could not find an episode for ${DAYSAGO} days ago."
+                fi
+        done
 fi
