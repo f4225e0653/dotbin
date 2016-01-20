@@ -16,7 +16,7 @@ function playd(){ # $1 is a date string in format +'%Y-%m%d'
         wget -o /dev/null -q -b "${DNROOT}/dn$1.mp4" -O "${DNSAVEPATH}/dn$1.mp4" &
         echo "Buffering to ${DNSAVEPATH}/dn$1.mp4"
         BUFFM="0" ## initialize a buffer measurement variable.
-        sleep ${SLEEP}
+        sleep 10
         while [[ ${BUFFM} -lt ${BUFF} ]]
         do
                 BUFFM="$(du --apparent-size -BK ${DNSAVEPATH}/dn$1.mp4 | awk '{print $1}' | tr -d '[:alpha:]')"
