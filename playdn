@@ -5,17 +5,25 @@
 ## I'm not simply using a pipe or even just passing the URL to mpv because sometimes I like to save them for future use.
 ## You want to have up to 500 mib of free ram.
 
-DNSAVEPATH="$(mktemp -d)"
-DATE="$(date +'%Y-%m%d')"
-DNROOT="http://publish.dvlabs.com/democracynow/360"
-SLEEP="10" # how many seconds to buffer before starting playback
-RETRY_LIMIT="20" ## how many days back should the script go looking for
+DNSAVEPATH="$(mktemp -d)" # magic
+DATE="$(date +'%Y-%m%d')" # magic
+DNROOT="http://publish.dvlabs.com/democracynow/360" # magic
+SLEEP="1" # how many seconds between buffer size checks
+BUFF="15360" ## How large, in kilobytes, the initial buffer should be
+RETRY_LIMIT="7" ## how many days back should the script go looking for
 
-function playd(){ # $1 is a date string in format +'%Y-%m%d'
+# $1 is a date string in format +'%Y-%m%d'
+function playd(){ 
         wget -o /dev/null -q -b "${DNROOT}/dn$1.mp4" -O "${DNSAVEPATH}/dn$1.mp4" &
         echo "Buffering to ${DNSAVEPATH}/dn$1.mp4"
-        echo "Buffering for ${SLEEP} seconds..."
-        sleep ${SLEEP}
+        BUFFM="0" ## initialize a buffer measurement variable.
+        sleep 5 # give wget a few seconds to connect etc
+        while [[ ${BUFFM} -lt ${BUFF} ]]
+        do
+                BUFFM="$(du --apparent-size -BK ${DNSAVEPATH}/dn$1.mp4 | awk '{print $1}' | tr -d '[:alpha:]')"
+                echo -en "\r\e[K${BUFFM}K of ${BUFF}K initial cache downloaded..."
+                sleep ${SLEEP}
+        done
 
         mpv "${DNSAVEPATH}/dn$1.mp4"
         echo "removing temporary file..." ## The user has to decide to pause mpv playback and copy the file to permanent storage because when mpv quits we free up that ram
@@ -25,7 +33,7 @@ function playd(){ # $1 is a date string in format +'%Y-%m%d'
 if $(wget --spider --quiet "${DNROOT}/dn${DATE}.mp4")
 then
         echo "There is a new episode of Democracy Now! today."
-        playdn "${DATE}"
+        playd "${DATE}"
 else
         echo "Could not find a new episode of Democracy Now! today."
         for DAYSAGO in $(seq 1 ${RETRY_LIMIT})
