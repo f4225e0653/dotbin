@@ -8,23 +8,20 @@
 DNSAVEPATH="$(mktemp -d)"
 DATE="$(date +'%Y-%m%d')"
 DNROOT="http://publish.dvlabs.com/democracynow/360"
-SLEEP="1" # how many seconds between buffer size checks
-BUFF="8192" ## How large, in kilobytes, the initial buffering period should be
+SLEEP="0.4" # how many seconds between buffer size checks
+BUFF="6144" ## How large, in kilobytes, the initial buffering period should be
 RETRY_LIMIT="20" ## how many days back should the script go looking for
 
 function playd(){ # $1 is a date string in format +'%Y-%m%d'
-        wget -o /dev/null -q -b "${DNROOT}/dn$1.mp4" -O "${DNSAVEPATH}/dn$1.mp4" &
+        curl "${DNROOT}/dn$1.mp4" --output "${DNSAVEPATH}/dn$1.mp4" &
         echo "Buffering to ${DNSAVEPATH}/dn$1.mp4"
-        BUFFM="0" ## initialize a buffer measurement variable.
-        sleep 10
         while [[ ${BUFFM} -lt ${BUFF} ]]
         do
                 BUFFM="$(du --apparent-size -BK ${DNSAVEPATH}/dn$1.mp4 | awk '{print $1}' | tr -d '[:alpha:]')"
-                echo -en "\r\e[K${BUFFM}K of ${BUFF}K initial cache downloaded..."
                 sleep ${SLEEP}
         done
         echo -en "\r\e[K" # clean up display
-        mpv "${DNSAVEPATH}/dn$1.mp4"
+        /usr/bin/vlc "${DNSAVEPATH}/dn$1.mp4" &> /dev/null
         echo "removing temporary file..." ## The user has to decide to pause mpv playback and copy the file to permanent storage because when mpv quits we free up that ram
         rm -vrf "${DNSAVEPATH}"
         }
@@ -43,8 +40,6 @@ else
                         echo "Found an episode for ${DAYSAGO} days ago."
                         playd "${CHECK}"
                         break
-                else
-                        echo "Could not find an episode for ${DAYSAGO} days ago."
                 fi
         done
 fi
